@@ -1,0 +1,82 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: ./docker/production/nginx/Dockerfile
+    container_name: prod-web
+    restart: unless-stopped
+    volumes:
+      - storage-production:/var/www/storage:ro
+    networks:
+      - nosto-production
+    ports:
+      - "80:80"
+    depends_on:
+      php-fpm:
+        condition: service_healthy
+
+  php-fpm:
+    build:
+      context: .
+      dockerfile: ./docker/common/php-fpm/Dockerfile
+      target: production
+    container_name: prod-fpm
+    restart: unless-stopped
+    volumes:
+      - storage-production:/var/www/storage
+    env_file:
+      - .env
+    networks:
+      - nosto-production
+    healthcheck:
+      test: [ "CMD-SHELL", "php-fpm-healthcheck || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # The 'php-cli' service provides a command-line interface for running Artisan commands and other CLI tasks.
+  php-cli:
+    build:
+      context: .
+      dockerfile: ./docker/production/php-cli/Dockerfile
+    container_name: prod-cli
+    tty: true # Enables an interactive terminal
+    stdin_open: true # Keeps standard input open for 'docker exec'
+    env_file:
+      - .env
+    networks:
+      - nosto-production
+
+  db:
+    image: mariadb:lts
+    container_name: prod-db
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:?error}
+      MYSQL_TCP_PORT: ${DB_PORT:?error}
+      MYSQL_USER: ${DB_USERNAME:?error}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?error}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?error}
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'no'
+    volumes:
+      - db-data-production:/var/lib/mysql/data
+    networks:
+      - nosto-production
+    healthcheck:
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  nosto-production:
+
+volumes:
+  db-data-production:
+  storage-production:

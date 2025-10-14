@@ -1,0 +1,88 @@
+services:
+  web:
+    image: nginx:latest
+    volumes:
+      - ./:/var/www
+      - ./docker/development/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    container_name: dev-web
+    ports:
+      - "8080:80"
+    environment:
+      - NGINX_HOST=localhost
+    networks:
+      - nosto-development
+    depends_on:
+      php-fpm:
+        condition: service_started
+
+  php-fpm:
+    build:
+      context: .
+      dockerfile: ./docker/common/php-fpm/Dockerfile
+      target: development
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
+        XDEBUG_MODE: develop,coverage,debug,profile
+        XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
+        XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
+        XDEBUG_LOG: /dev/stdout
+        XDEBUG_LOG_LEVEL: 0
+    container_name: dev-fpm
+    env_file:
+      - .env
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - ./:/var/www
+    networks:
+      - nosto-development
+    depends_on:
+      db:
+        condition: service_started
+
+  php-cli:
+    build:
+      context: .
+      dockerfile: docker/development/php-cli/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
+        XDEBUG_MODE: develop,coverage,debug,profile
+        XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
+        XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
+        XDEBUG_LOG: /dev/stdout
+        XDEBUG_LOG_LEVEL: 0
+    container_name: dev-cli
+    tty: true # Enables an interactive terminal
+    stdin_open: true # Keeps standard input open for 'docker exec'
+    env_file:
+      - .env
+    volumes:
+      - ./:/var/www
+    networks:
+      - nosto-development
+
+  db:
+    image: mariadb:lts
+    container_name: dev-db
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:?error}
+      MYSQL_TCP_PORT: ${DB_PORT:?error}
+      MYSQL_USER: ${DB_USERNAME:?error}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?error}
+      MYSQL_PASSWORD: ${DB_PASSWORD?error}
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    volumes:
+      - db-data-development:/var/lib/mysql/data
+    networks:
+      - nosto-development
+
+networks:
+  nosto-development:
+
+volumes:
+  db-data-development:
