@@ -97,7 +97,7 @@ FROM production AS development
 # Environment variables passed from the Docker build command or Docker Compose
 ARG XDEBUG_ENABLED=true
 ARG XDEBUG_MODE=develop,coverage,debug,profile
-ARG XDEBUG_HOST=host.docker.internal
+ARG XDEBUG_HOST=xdebug://gateway
 ARG XDEBUG_IDE_KEY=DOCKER
 ARG XDEBUG_LOG=/dev/stdout
 ARG XDEBUG_LOG_LEVEL=0
