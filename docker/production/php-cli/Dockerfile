@@ -13,8 +13,9 @@ RUN apt-get update \
     libxml2-dev \
     libcurl4-openssl-dev \
     libicu-dev \
-    libzip-dev \
-    && docker-php-ext-install -j$(nproc) \
+    libzip-dev
+
+RUN docker-php-ext-install -j$(nproc) \
     pdo_mysql \
     opcache \
     intl \

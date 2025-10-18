@@ -4,7 +4,8 @@ FROM php:8.4-fpm AS builder
 ARG APP_END
 
 # Install system dependencies and PHP extensions for Laravel with MySQL support.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
     curl \
     unzip \
     libpq-dev \
@@ -14,7 +15,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev \
     libicu-dev \
     libzip-dev \
-    && docker-php-ext-install -j$(nproc) \
+    nodejs \
+    npm
+
+RUN docker-php-ext-install -j$(nproc) \
     pdo_mysql \
     opcache \
     intl \
@@ -35,12 +39,17 @@ COPY . /var/www
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
 
+# Install Node.js dependencies and build assets
+RUN npm install \
+    && npm run build
+
 # Stage 2: Production environment
 FROM php:8.4-fpm AS production
 
 # Install only runtime libraries needed in production
 # libfcgi-bin and procps are required for the php-fpm-healthcheck script
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
     libpq-dev \
     libicu-dev \
     libzip-dev \
