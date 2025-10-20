@@ -2,22 +2,43 @@
 
 namespace App\Dtos\Apis\Normalizers;
 
+use App\Dtos\Apis\Enums\ApiResponseContentTypeEnum;
+use App\Exceptions\DtoNormalizerException;
+use App\Helpers\JsonHelper;
 use GuzzleHttp\Psr7\Response;
+use JsonException;
 use Spatie\LaravelData\Normalizers\Normalizer;
 
-class GuzzleResponseNormalizer implements Normalizer
+readonly class GuzzleResponseNormalizer implements Normalizer
 {
+    public function __construct(private JsonHelper $jsonHelper)
+    {
+    }
 
+    /**
+     * @param mixed $value
+     *
+     * @return array|null
+     * @throws DtoNormalizerException
+     */
     public function normalize(mixed $value): ?array
     {
         if ($value instanceof Response === false) {
             return null;
         }
 
+        $normalizedHeaders = $this->normalizeHeaders($value);
+        $normalizedHeaders[ApiResponseContentTypeEnum::getHeaderName()] = $this->normalizeContentType(
+            $normalizedHeaders[ApiResponseContentTypeEnum::getHeaderName()],
+        );
+
         return [
-            'statusCode' => $value->getStatusCode(),
-            'headers' => $this->normalizeHeaders($value),
-            'content' => $value->getBody()->getContents(),
+            'status-code' => $value->getStatusCode(),
+            'headers' => $normalizedHeaders,
+            'content' => $this->normalizeContent(
+                $normalizedHeaders[ApiResponseContentTypeEnum::getHeaderName()],
+                $value->getBody()->getContents(),
+            ),
         ];
     }
 
@@ -34,5 +55,36 @@ class GuzzleResponseNormalizer implements Normalizer
         }
 
         return $result;
+    }
+
+    private function normalizeContentType(string $value): ApiResponseContentTypeEnum
+    {
+        return ApiResponseContentTypeEnum::tryFrom($value)
+            ?? ApiResponseContentTypeEnum::TEXT;
+    }
+
+    /**
+     * @param ApiResponseContentTypeEnum $contentType
+     * @param string $content
+     *
+     * @return array|string
+     * @throws DtoNormalizerException
+     */
+    private function normalizeContent(
+        ApiResponseContentTypeEnum $contentType,
+        string $content,
+    ): array|string
+    {
+        try {
+            return match ($contentType) {
+                ApiResponseContentTypeEnum::JSON => $this->jsonHelper->decode($content),
+                default => $content,
+            };
+        } catch (JsonException $exception) {
+            throw new DtoNormalizerException(
+                message: 'There was an error trying to convert the response content to JSON',
+                previous: $exception,
+            );
+        }
     }
 }

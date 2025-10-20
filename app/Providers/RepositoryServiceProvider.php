@@ -3,14 +3,19 @@
 namespace App\Providers;
 
 use App\Repositories\Apis\GuzzleApiRepository;
-use App\Repositories\Apis\Interfaces\ApiServiceProviderInterface;
+use App\Repositories\CurrencyExchangers\Interfaces\CurrencyExchangerInterface;
+use App\Repositories\CurrencyExchangers\SwopCxCurrencyExchanger;
 use GuzzleHttp\Client;
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider implements DeferrableProvider
 {
+    /**
+     * @var class-string<CurrencyExchangerInterface>
+     */
+    public static string $currencyExchanger = SwopCxCurrencyExchanger::class;
+
     /**
      * Register services.
      */
@@ -18,24 +23,31 @@ class RepositoryServiceProvider extends ServiceProvider implements DeferrablePro
     {
         $this->app
             ->bind(
-                ApiServiceProviderInterface::class,
-                function (Application $app) {
-//
-//                    $app->make('config')->get('api');
-//                    $app->make('cache');
+                CurrencyExchangerInterface::class,
+                function (): CurrencyExchangerInterface {
+                    $config = static::$currencyExchanger::getConfig();
 
-                    return new GuzzleApiRepository(new Client());
+                    $api = new GuzzleApiRepository(
+                        new Client(['base_uri' => $config->uri->base]),
+                    );
+
+                    return new static::$currencyExchanger(
+                        $api,
+                        $config,
+                    );
                 },
             );
     }
 
     /**
      * @inheritDoc
+     *
+     * @codeCoverageIgnore
      */
     public function provides(): array
     {
         return [
-            ApiServiceProviderInterface::class,
+            CurrencyExchangerInterface::class,
         ];
     }
 }

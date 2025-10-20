@@ -2,23 +2,36 @@
 
 namespace App\Http\Controllers;
 
-use App\Repositories\Apis\Interfaces\ApiServiceProviderInterface;
+use App\Dtos\CurrenciesExchangers\CurrencyDto;
+use App\Repositories\CurrencyExchangers\Interfaces\CurrencyExchangerInterface;
 
 class TestController extends Controller
 {
-    public function __construct(private readonly ApiServiceProviderInterface $repository)
+    public function __construct(private readonly CurrencyExchangerInterface $repository)
     {
     }
 
     public function test()
     {
-        $f = $this->repository->get(
-            'https://swop.cx/rest/currencies',
-            [
-                'headers' => [
-                    'Authorization' => 'ApiKey d0147553c4cd3b3302f0bd3e9bd28ef9a884718c087733002c4ba45739772a6a',
-                ],
-            ],
+        $f = $this->repository->getAvailableCurrencies();
+
+        $t = 1;
+
+        return $f;
+    }
+
+    public function foo()
+    {
+        $f = [
+            'numericCode' => 0,
+            'decimalDigits' => 0,
+            'name' => '',
+            'active' => '',
+        ];
+
+        $f = $this->repository->getRateForCurrency(
+            CurrencyDto::from(['code' => 'EUR', ...$f]),
+            CurrencyDto::from(['code' => 'USD', ...$f]),
         );
 
         $t = 1;

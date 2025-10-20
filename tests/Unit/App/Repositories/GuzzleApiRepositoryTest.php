@@ -7,6 +7,7 @@ use App\Dtos\Apis\Enums\ApiResponseConnectionEnum;
 use App\Dtos\Apis\Enums\ApiResponseContentTypeEnum;
 use App\Dtos\Apis\Enums\ApiResponseStatusCodeEnum;
 use App\Exceptions\ApiCallException;
+use App\Helpers\JsonHelper;
 use App\Repositories\Apis\GuzzleApiRepository;
 use DateTimeImmutable;
 use Faker\Factory as Faker;
@@ -17,15 +18,24 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use JsonException;
 use Tests\TestCase;
 
 class GuzzleApiRepositoryTest extends TestCase
 {
-    private Client $guzzleClient;
     private Generator $faker;
+    private JsonHelper $jsonHelper;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->faker = Faker::create();
+        $this->jsonHelper = new JsonHelper();
+    }
 
     /**
-     * @throws ApiCallException
+     * @throws ApiCallException|JsonException
      */
     public function testGetFunctionWillReturnApiResponseDtoWithPropperData(): void
     {
@@ -36,14 +46,14 @@ class GuzzleApiRepositoryTest extends TestCase
             connection: ApiResponseConnectionEnum::KEEP_ALIVE,
         );
 
-        $expectedContent = $this->faker->word();
+        $expectedContent = [$this->faker->word() => $this->faker->word()];
 
         $guzzleResponseMock = new MockHandler(
             [
                 new Response(
                     ApiResponseStatusCodeEnum::HTTP_OK->value,
                     $expectedHeaders->toArray(),
-                    $expectedContent,
+                    $this->jsonHelper->encode($expectedContent),
                 ),
             ],
         );
@@ -92,12 +102,5 @@ class GuzzleApiRepositoryTest extends TestCase
 
         // When
         $repository->get('some url');
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->faker = Faker::create();
     }
 }

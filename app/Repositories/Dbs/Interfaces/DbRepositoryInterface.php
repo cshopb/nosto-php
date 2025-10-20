@@ -2,8 +2,8 @@
 
 namespace App\Repositories\Dbs\Interfaces;
 
+use Illuminate\Database\Eloquent\Collection;
 use Spatie\LaravelData\Data;
-use Spatie\LaravelData\DataCollection;
 
 /**
  * @template TData of Data
@@ -13,9 +13,9 @@ interface DbRepositoryInterface
     /**
      * @param array $columns
      *
-     * @return DataCollection<TData>
+     * @return Collection<TData>
      */
-    public function get(array $columns = ['*']): DataCollection;
+    public function get(array $columns = ['*']): Collection;
 
     /**
      * @param array $columns
