@@ -7,9 +7,9 @@ use App\Models\User;
 use App\Repositories\Dbs\EloquentRepository;
 use Faker\Factory as Faker;
 use Faker\Generator;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase;
-use Spatie\LaravelData\DataCollection;
 
 class EloquentRepositoryTest extends TestCase
 {
@@ -18,17 +18,15 @@ class EloquentRepositoryTest extends TestCase
     private EloquentRepository $repository;
     private Generator $faker;
 
-    public function testFoo(): void
+    public function testGetFunctionWillReturnTheCorrectDataWhenCalledWithChainedConstraint(): void
     {
         // Given
         $user = User::factory()->create();
 
-        $expected = UserDto::collect(
-            [$user],
-            DataCollection::class,
-        );
+        $expected = UserDto::collect(new Collection([$user]));
 
         // When
+        /** @noinspection StaticInvocationViaThisInspection */
         $result = $this->repository->where(
             'email',
             $user->email,

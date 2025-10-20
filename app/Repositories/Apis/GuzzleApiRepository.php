@@ -2,13 +2,14 @@
 
 namespace App\Repositories\Apis;
 
+use App\Dtos\Apis\ApiRequestOptionsDto;
 use App\Dtos\Apis\ApiResponseDto;
 use App\Exceptions\ApiCallException;
-use App\Repositories\Apis\Interfaces\ApiServiceProviderInterface;
+use App\Repositories\Apis\Interfaces\ApiRepositoryInterface;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 
-readonly class GuzzleApiRepository implements ApiServiceProviderInterface
+readonly class GuzzleApiRepository implements ApiRepositoryInterface
 {
     public function __construct(private Client $client)
     {
@@ -19,14 +20,14 @@ readonly class GuzzleApiRepository implements ApiServiceProviderInterface
      */
     public function get(
         string $url,
-        array $options = [],
+        ApiRequestOptionsDto $options = new ApiRequestOptionsDto(),
     ): ApiResponseDto
     {
         try {
             $result = $this->client
                 ->get(
                     $url,
-                    $options,
+                    $options->toArray(),
                 );
         } catch (GuzzleException $exception) {
             throw new ApiCallException(

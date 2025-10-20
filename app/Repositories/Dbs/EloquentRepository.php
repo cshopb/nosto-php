@@ -6,9 +6,9 @@ use App\Exceptions\DbRepositoryException;
 use App\Repositories\Dbs\Interfaces\DbRepositoryInterface;
 use Eloquent;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\LaravelData\Data;
-use Spatie\LaravelData\DataCollection;
 
 /**
  * @template TData of Data
@@ -43,11 +43,10 @@ class EloquentRepository implements DbRepositoryInterface
     /**
      * @inheritDoc
      */
-    public function get(array $columns = ['*']): DataCollection
+    public function get(array $columns = ['*']): Collection
     {
         return $this->dtoClass::collect(
             $this->eloquentBuilder->get($columns),
-            DataCollection::class,
         );
     }
 

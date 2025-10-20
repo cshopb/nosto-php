@@ -14,7 +14,7 @@ return [
     'swop-cx' => [
         'uri' => [
             'base' => 'https://swop.cx',
-            'singleRate' => '/rest/rates',
+            'listOfRates' => '/rest/rates',
             'availableCurrencies' => '/rest/currencies',
         ],
         'apiKey' => 'ApiKey ' . env('SWOP_CX_API_KEY'),

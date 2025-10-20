@@ -2,10 +2,11 @@
 
 namespace App\Repositories\Apis\Interfaces;
 
+use App\Dtos\Apis\ApiRequestOptionsDto;
 use App\Dtos\Apis\ApiResponseDto;
 use App\Exceptions\ApiCallException;
 
-interface ApiServiceProviderInterface
+interface ApiRepositoryInterface
 {
     /**
      * Create and send an HTTP GET request.
@@ -15,14 +16,13 @@ interface ApiServiceProviderInterface
      * The URL can contain the query string as well.
      *
      * @param string $url
-     * @param array $options
+     * @param ApiRequestOptionsDto $options
      *
      * @return ApiResponseDto
-     *
      * @throws ApiCallException
      */
     public function get(
         string $url,
-        array $options = [],
+        ApiRequestOptionsDto $options = new ApiRequestOptionsDto(),
     ): ApiResponseDto;
 }
