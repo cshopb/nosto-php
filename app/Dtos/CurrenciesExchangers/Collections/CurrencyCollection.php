@@ -11,7 +11,7 @@ class CurrencyCollection extends Collection
     {
         return $this->keyBy(
             function (CurrencyDto $currency): string {
-                return $currency->code;
+                return strtoupper($currency->code);
             },
         );
     }

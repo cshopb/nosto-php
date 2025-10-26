@@ -36,6 +36,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   # The 'php-cli' service provides a command-line interface for running Artisan commands and other CLI tasks.
   php-cli:

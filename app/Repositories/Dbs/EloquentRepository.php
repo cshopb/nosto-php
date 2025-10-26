@@ -37,7 +37,9 @@ class EloquentRepository implements DbRepositoryInterface
      */
     public function first(array $columns = ['*']): Data
     {
-        return $this->dtoClass::from($this->eloquentBuilder->get($columns));
+        return $this->dtoClass::from(
+            $this->eloquentBuilder->first($columns),
+        );
     }
 
     /**

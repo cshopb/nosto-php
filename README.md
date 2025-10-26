@@ -41,12 +41,17 @@ Once you have the `.env` file, make sure that the following values are set:
 
 ```dotenv
 APP_KEY=
+APP_ENV=local|development
 
 DB_HOST=db
 DB_PORT=
 DB_DATABASE=
 DB_USERNAME=
 DB_PASSWORD=
+
+...
+
+SWOP_CX_API_KEY=
 ```
 
 ___
@@ -106,4 +111,47 @@ You can exit the container by typing:
 
 ```shell
   exit
+```
+
+___
+
+### Build Frontend
+
+In the correct CLI [service](#services) you can run:
+
+```shell
+  npm run build
+```
+
+This will build the frontend so that the `VueJS devtool` will not work, and the resulting frontend build will be
+minimized.
+
+For debugging run:
+
+```shell
+    npm run build:dev
+```
+
+This will build the frontend for debugging and the `VueJS devtool` will work. This will only function correctly if you
+are running the [dev](#development) docker service.
+___
+
+### Testing
+
+In the CLI container run:
+
+```shell
+    php artisan test
+```
+
+To have a look at the code coverage run:
+
+```shell
+    php artisan test --coverage
+```
+
+To generate HTML code coverage run:
+
+```shell
+    vendor\bin\phpunit --coverage-html <directoryNameWhereItWillGenerateTheHtml>
 ```

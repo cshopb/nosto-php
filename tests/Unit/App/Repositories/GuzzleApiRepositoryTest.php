@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\App\Repositories;
 
+use App\Dtos\Apis\ApiResponseDto;
 use App\Dtos\Apis\ApiResponseHeadersDto;
 use App\Dtos\Apis\Enums\ApiResponseConnectionEnum;
 use App\Dtos\Apis\Enums\ApiResponseContentTypeEnum;
@@ -13,6 +14,7 @@ use DateTimeImmutable;
 use Faker\Factory as Faker;
 use Faker\Generator;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -78,7 +80,7 @@ class GuzzleApiRepositoryTest extends TestCase
         );
     }
 
-    public function testGetFunctionWillThrowPropperExceptionWhenThereIsAnErrorWithResponse(): void
+    public function testGetFunctionWillThrowPropperExceptionWhenBadResponseExceptionIsNotTheExceptionThrownFromClient(): void
     {
         // Given
         $guzzleResponseMock = new MockHandler(
@@ -102,5 +104,80 @@ class GuzzleApiRepositoryTest extends TestCase
 
         // When
         $repository->get('some url');
+    }
+
+    public function testGetFunctionWillThrowPropperExceptionWhenBadResponseExceptionIsThrownFromClient(): void
+    {
+        // Given
+        $expectedCode = $this->faker
+            ->randomElement(ApiResponseStatusCodeEnum::cases())
+            ->value;
+
+        $expectedBody = $this->faker->word();
+        $expectedHeaders = [
+            ApiResponseContentTypeEnum::getHeaderName() => ApiResponseContentTypeEnum::TEXT->value,
+        ];
+
+        $expectedResponse = new Response(
+            status: $expectedCode,
+            headers: $expectedHeaders,
+            body: $expectedBody,
+        );
+
+        $expectedRequest = new Request(
+            'GET',
+            'test',
+        );
+
+        $expectedUrl = $this->faker->word();
+
+        $expectedResponseDto = ApiResponseDto::from(
+            [
+                'statusCode' => $expectedCode,
+                'headers' => $expectedHeaders,
+                'content' => $expectedBody,
+            ],
+        );
+
+        $guzzleResponseMock = new MockHandler(
+            [
+                new BadResponseException(
+                    message: 'Error Communicating with Server',
+                    request: $expectedRequest,
+                    response: $expectedResponse,
+                ),
+            ],
+        );
+
+        $handlerStack = HandlerStack::create($guzzleResponseMock);
+        $client = new Client(['handler' => $handlerStack]);
+
+        $repository = new GuzzleApiRepository($client);
+
+        $this->expectException(ApiCallException::class);
+        $this->expectExceptionObject(
+            new ApiCallException(
+                message: "There was an error getting data from: {$expectedUrl}",
+                code: $expectedCode,
+            ),
+        );
+
+        // When
+        try {
+            $repository->get($expectedUrl);
+        } catch (ApiCallException $exception) {
+            // Then
+            $this->assertEquals(
+                $expectedRequest,
+                $exception->getRequest(),
+            );
+
+            $this->assertEquals(
+                $expectedResponseDto,
+                $exception->getResponse(),
+            );
+
+            throw $exception;
+        }
     }
 }

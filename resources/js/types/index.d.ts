@@ -17,6 +17,35 @@ export interface NavItem {
     isActive?: boolean;
 }
 
+export interface CurrencyItem {
+    code: string,
+    numericCode: number,
+    decimalDigits: number,
+    name: string,
+    active: boolean,
+}
+
+export interface CurrencyArrayItem {
+    [key: string]: CurrencyItem;
+}
+
+export interface CurrencyRateResponse {
+    baseCurrency: CurrencyItem;
+    quoteCurrency: CurrencyItem;
+    quote: number;
+    date: Date;
+}
+
+export interface CurrencyRateRequest {
+    baseCurrency: string;
+    quoteCurrency: string;
+}
+
+export interface BackendException {
+    code: number,
+    message: string,
+}
+
 export type AppPageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {

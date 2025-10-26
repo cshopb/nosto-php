@@ -27,6 +27,8 @@ readonly class GuzzleResponseNormalizer implements Normalizer
             return null;
         }
 
+        $value = clone $value;
+
         $normalizedHeaders = $this->normalizeHeaders($value);
         $normalizedHeaders[ApiResponseContentTypeEnum::getHeaderName()] = $this->normalizeContentType(
             $normalizedHeaders[ApiResponseContentTypeEnum::getHeaderName()],

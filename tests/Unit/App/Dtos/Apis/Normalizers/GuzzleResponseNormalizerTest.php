@@ -143,6 +143,28 @@ class GuzzleResponseNormalizerTest extends TestCase
         );
     }
 
+    /**
+     * @throws DtoNormalizerException|JsonException
+     */
+    public function testNormalizeFunctionWillThrowAnExceptionIfContentIsMalformedJson(): void
+    {
+        // Given
+        $response = new Response(
+            status: 200,
+            headers: [
+                'Date' => $this->faker->dateTime()->format(DATE_RFC2822),
+                'Content-Type' => ApiResponseContentTypeEnum::JSON->value,
+                'Connection' => ApiResponseConnectionEnum::KEEP_ALIVE->value,
+            ],
+            body: '[',
+        );
+
+        $this->expectException(DtoNormalizerException::class);
+
+        // When
+        $result = $this->normalizer->normalize($response);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

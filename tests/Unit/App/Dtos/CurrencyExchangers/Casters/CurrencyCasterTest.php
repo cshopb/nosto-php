@@ -4,7 +4,7 @@ namespace Tests\Unit\App\Dtos\CurrencyExchangers\Casters;
 
 use App\Dtos\CurrenciesExchangers\Casters\CurrencyCaster;
 use App\Dtos\CurrenciesExchangers\CurrencyDto;
-use App\Exceptions\CurrencyExchangerException;
+use App\Exceptions\CurrencyExchangerApiException;
 use App\Exceptions\DataCasterException;
 use App\Providers\RepositoryServiceProvider;
 use App\Repositories\CurrencyExchangers\Interfaces\CurrencyExchangerInterface;
@@ -202,7 +202,7 @@ class CurrencyCasterTest extends TestCase
         $this->exchanger
             ->expects($this->once())
             ->method('getCurrencyFromCode')
-            ->willThrowException(new CurrencyExchangerException());
+            ->willThrowException(new CurrencyExchangerApiException());
 
         $caster = new CurrencyCaster($this->exchanger);
 
@@ -226,7 +226,7 @@ class CurrencyCasterTest extends TestCase
         $this->exchanger
             ->expects($this->once())
             ->method('getCurrencyFromCode')
-            ->willThrowException(new CurrencyExchangerException());
+            ->willThrowException(new CurrencyExchangerApiException());
 
         $caster = new CurrencyCaster($this->exchanger);
 
