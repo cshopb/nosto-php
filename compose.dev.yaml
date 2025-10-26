@@ -10,7 +10,7 @@ services:
     environment:
       - NGINX_HOST=localhost
     networks:
-      - nosto-development
+      - currency-development
     depends_on:
       php-fpm:
         condition: service_started
@@ -36,11 +36,15 @@ services:
     volumes:
       - ./:/var/www
     networks:
-      - nosto-development
+      - currency-development
     depends_on:
       db:
         condition: service_started
       redis:
+        condition: service_started
+      influxdb:
+        condition: service_started
+      grafana:
         condition: service_started
 
   php-cli:
@@ -61,10 +65,19 @@ services:
     stdin_open: true # Keeps standard input open for 'docker exec'
     environment:
       - NODE_ENV=development
+      - INFLUXDB_NAME=${INFLUXDB_NAME:-my_name}
+      - INFLUXDB_USER=${INFLUXDB_USER:-my_user}
+      - INFLUXDB_PASSWORD=${INFLUXDB_PASSWORD:-my_password}
+      - INFLUXDB_ORGANISATION=${INFLUXDB_ORGANISATION:-my_organisation}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-my_bucket}
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-my_token}
     volumes:
       - ./:/var/www
     networks:
-      - nosto-development
+      - currency-development
+    depends_on:
+      php-fpm:
+        condition: service_started
 
   db:
     image: mariadb:lts
@@ -81,16 +94,42 @@ services:
     volumes:
       - db-data-development:/var/lib/mysql/data
     networks:
-      - nosto-development
+      - currency-development
 
   redis:
     image: redis:alpine
     container_name: dev-redis
     networks:
-      - nosto-development
+      - currency-development
+
+  influxdb:
+    image: influxdb:2-alpine
+    container_name: dev-infulxdb
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_ADMIN_USER}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_ADMIN_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+    ports:
+      - "8086:8086"
+    networks:
+      - currency-development
+
+  grafana:
+    image: grafana/grafana:main
+    container_name: dev-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - currency-development
 
 networks:
-  nosto-development:
+  currency-development:
 
 volumes:
   db-data-development:
+  grafana-data:

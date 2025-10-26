@@ -11,6 +11,9 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use InfluxDB2\Client;
+use InfluxDB2\Point;
+use InfluxDB2\WriteType;
 use Spatie\Csp\AddCspHeaders;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -32,6 +35,39 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        $exceptions->report(
+            function (Exception $exception) {
+                $point = new Point('exception')
+                    ->addTag(
+                        'exception_class',
+                        get_class($exception),
+                    )
+                    ->addField(
+                        'code',
+                        $exception->getCode(),
+                    )
+                    ->addField(
+                        'message',
+                        $exception->getMessage(),
+                    )
+                    ->addField(
+                        'trace',
+                        $exception->getTraceAsString(),
+                    )
+                    ->time(new DateTimeImmutable());
+
+                $influxDb = \Illuminate\Support\Facades\App::make(Client::class);
+                $writeInfluxDb = $influxDb->createWriteApi(
+                    [
+                        'writeType' => WriteType::SYNCHRONOUS,
+                    ],
+                );
+
+                $writeInfluxDb->write($point);
+                $writeInfluxDb->close();
+            },
+        );
+
         $exceptions->respond(
             function (
                 Response $response,

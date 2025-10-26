@@ -49,7 +49,12 @@ DB_DATABASE=
 DB_USERNAME=
 DB_PASSWORD=
 
-...
+INFLUXDB_URL="influxdb:8086"
+INFLUXDB_ADMIN_USER=
+INFLUXDB_ADMIN_PASSWORD=
+INFLUXDB_ORG=
+INFLUXDB_BUCKET=
+INFLUXDB_TOKEN=
 
 SWOP_CX_API_KEY=
 ```
@@ -98,7 +103,7 @@ To enter the development CLI container run:
 Once started you can access it by going to <localhost:8080> in your browser.
 ___
 
-### Initial DB Setup
+## Initial DB Setup
 
 Enter into the CLI container of the running [service](#Services).
 Once inside the container, migrate the DB by running:
@@ -115,7 +120,7 @@ You can exit the container by typing:
 
 ___
 
-### Build Frontend
+## Build Frontend
 
 In the correct CLI [service](#services) you can run:
 
@@ -136,7 +141,7 @@ This will build the frontend for debugging and the `VueJS devtool` will work. Th
 are running the [dev](#development) docker service.
 ___
 
-### Testing
+## Testing
 
 In the CLI container run:
 
@@ -155,3 +160,31 @@ To generate HTML code coverage run:
 ```shell
     vendor\bin\phpunit --coverage-html <directoryNameWhereItWillGenerateTheHtml>
 ```
+
+___
+
+## Tooling
+
+### InfluxDB
+
+Accessible at: http://localhost:8086
+
+### Grafana Setup
+
+Open in browser http://localhost:3000/datasources
+
+Username and password are `admin`
+
+Select `influxdb` as the for `data source`
+
+Set the following values:
+
+- Query language: `Flux`
+- HTTP > URL: `http://influxdb:8086`
+- InfluxDB Details > Organization: `{INFLUXDB_ORG} env values`
+- InfluxDB Details > Token: `{INFLUXDB_BUCKET} env values`
+- InfluxDB Details > Default Bucket: `{INFLUXDB_TOKEN} env values`
+
+Click on `Save & test` and you should see a green info box popout that it was successful.
+
+

@@ -8,7 +8,7 @@ services:
     volumes:
       - storage-production:/var/www/storage:ro
     networks:
-      - nosto-production
+      - currency-production
     ports:
       - "80:80"
     depends_on:
@@ -27,7 +27,7 @@ services:
     env_file:
       - .env
     networks:
-      - nosto-production
+      - currency-production
     healthcheck:
       test: [ "CMD-SHELL", "php-fpm-healthcheck || exit 1" ]
       interval: 10s
@@ -37,6 +37,10 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_started
+      influxdb:
+        condition: service_started
+      grafana:
         condition: service_started
 
   # The 'php-cli' service provides a command-line interface for running Artisan commands and other CLI tasks.
@@ -50,7 +54,10 @@ services:
     env_file:
       - .env
     networks:
-      - nosto-production
+      - currency-production
+    depends_on:
+      php-fpm:
+        condition: service_started
 
   db:
     image: mariadb:lts
@@ -68,7 +75,7 @@ services:
     volumes:
       - db-data-production:/var/lib/mysql/data
     networks:
-      - nosto-production
+      - currency-production
     healthcheck:
       test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
       start_period: 10s
@@ -81,16 +88,50 @@ services:
     container_name: prod-redis
     restart: unless-stopped
     networks:
-      - nosto-production
+      - currency-production
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 3
 
+  influxdb:
+    image: influxdb:2-alpine
+    container_name: prod-infulxdb
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_ADMIN_USER}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_ADMIN_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+    networks:
+      - currency-production
+    healthcheck:
+      test: [ "CMD", "influx", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  grafana:
+    image: grafana/grafana:main
+    container_name: prod-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - currency-production
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "grafana/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 networks:
-  nosto-production:
+  currency-production:
 
 volumes:
   db-data-production:
   storage-production:
+  grafana-data:

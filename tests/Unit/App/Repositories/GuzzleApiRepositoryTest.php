@@ -13,13 +13,15 @@ use App\Repositories\Apis\GuzzleApiRepository;
 use DateTimeImmutable;
 use Faker\Factory as Faker;
 use Faker\Generator;
-use GuzzleHttp\Client;
+use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use InfluxDB2\Client as InfluxDbClient;
+use InfluxDB2\WriteApi;
 use JsonException;
 use Tests\TestCase;
 
@@ -27,6 +29,7 @@ class GuzzleApiRepositoryTest extends TestCase
 {
     private Generator $faker;
     private JsonHelper $jsonHelper;
+    private InfluxDbClient $influxDbClient;
 
     protected function setUp(): void
     {
@@ -34,6 +37,20 @@ class GuzzleApiRepositoryTest extends TestCase
 
         $this->faker = Faker::create();
         $this->jsonHelper = new JsonHelper();
+
+        $influxDbWriter = $this->createMock(WriteApi::class);
+        $influxDbWriter->expects($this->once())
+            ->method('write');
+
+        $influxDbWriter->expects($this->once())
+            ->method('close');
+
+        $influxDbClient = $this->createMock(InfluxDbClient::class);
+        $influxDbClient->expects($this->once())
+            ->method('createWriteApi')
+            ->willReturn($influxDbWriter);
+
+        $this->influxDbClient = $influxDbClient;
     }
 
     /**
@@ -61,9 +78,12 @@ class GuzzleApiRepositoryTest extends TestCase
         );
 
         $handlerStack = HandlerStack::create($guzzleResponseMock);
-        $client = new Client(['handler' => $handlerStack]);
+        $guzzleClient = new GuzzleClient(['handler' => $handlerStack]);
 
-        $repository = new GuzzleApiRepository($client);
+        $repository = new GuzzleApiRepository(
+            $guzzleClient,
+            $this->influxDbClient,
+        );
 
         // When
         $result = $repository->get('some url');
@@ -96,9 +116,12 @@ class GuzzleApiRepositoryTest extends TestCase
         );
 
         $handlerStack = HandlerStack::create($guzzleResponseMock);
-        $client = new Client(['handler' => $handlerStack]);
+        $guzzleClient = new GuzzleClient(['handler' => $handlerStack]);
 
-        $repository = new GuzzleApiRepository($client);
+        $repository = new GuzzleApiRepository(
+            $guzzleClient,
+            $this->influxDbClient,
+        );
 
         $this->expectException(ApiCallException::class);
 
@@ -150,9 +173,12 @@ class GuzzleApiRepositoryTest extends TestCase
         );
 
         $handlerStack = HandlerStack::create($guzzleResponseMock);
-        $client = new Client(['handler' => $handlerStack]);
+        $guzzleClient = new GuzzleClient(['handler' => $handlerStack]);
 
-        $repository = new GuzzleApiRepository($client);
+        $repository = new GuzzleApiRepository(
+            $guzzleClient,
+            $this->influxDbClient,
+        );
 
         $this->expectException(ApiCallException::class);
         $this->expectExceptionObject(
