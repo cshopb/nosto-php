@@ -3,7 +3,7 @@
 namespace App\Dtos\CurrenciesExchangers\Casters;
 
 use App\Dtos\CurrenciesExchangers\CurrencyDto;
-use App\Exceptions\CurrencyExchangerException;
+use App\Exceptions\CurrencyExchangerApiException;
 use App\Exceptions\DataCasterException;
 use App\Repositories\CurrencyExchangers\Interfaces\CurrencyExchangerInterface;
 use Spatie\LaravelData\Casts\Cast;
@@ -56,7 +56,7 @@ class CurrencyCaster implements Cast, IterableItemCast
             /** @noinspection ProperNullCoalescingOperatorUsageInspection */
             return $this->currencyExchanger
                 ->getCurrencyFromCode(strtoupper($value)) ?? Uncastable::create();
-        } catch (CurrencyExchangerException $exception) {
+        } catch (CurrencyExchangerApiException $exception) {
             throw new DataCasterException(
                 message: 'Error grabbing currency code for currency caster',
                 previous: $exception,

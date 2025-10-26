@@ -46,6 +46,7 @@ enum ApiResponseStatusCodeEnum: int
     case HTTP_REQUESTED_RANGE_NOT_SATISFIABLE = 416;
     case HTTP_EXPECTATION_FAILED = 417;
     case HTTP_I_AM_A_TEAPOT = 418;
+    case HTTP_PAGE_EXPIRED = 419;
     case HTTP_MISDIRECTED_REQUEST = 421;
     case HTTP_UNPROCESSABLE_ENTITY = 422;
     case HTTP_LOCKED = 423;
@@ -67,4 +68,39 @@ enum ApiResponseStatusCodeEnum: int
     case HTTP_LOOP_DETECTED = 508;
     case HTTP_NOT_EXTENDED = 510;
     case HTTP_NETWORK_AUTHENTICATION_REQUIRED = 511;
+
+    public function isInformationalResponse(): bool
+    {
+        return $this->startsWithNumber(1);
+    }
+
+    public function isSuccess(): bool
+    {
+        return $this->startsWithNumber(2);
+    }
+
+    public function isRedirection(): bool
+    {
+        return $this->startsWithNumber(3);
+    }
+
+    public function isClientError(): bool
+    {
+        return $this->startsWithNumber(4);
+    }
+
+    public function isServerError(): bool
+    {
+        return $this->startsWithNumber(5);
+    }
+
+    private function startsWithNumber(int $startWithNumber): bool
+    {
+        $regex = "/^{$startWithNumber}\d{2}/";
+
+        return preg_match(
+                $regex,
+                $this->value,
+            ) === 1;
+    }
 }

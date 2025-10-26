@@ -18,6 +18,18 @@ class EloquentRepositoryTest extends TestCase
     private EloquentRepository $repository;
     private Generator $faker;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->faker = Faker::create();
+
+        $this->repository = new EloquentRepository(
+            UserDto::class,
+            User::class,
+        );
+    }
+
     public function testGetFunctionWillReturnTheCorrectDataWhenCalledWithChainedConstraint(): void
     {
         // Given
@@ -39,15 +51,25 @@ class EloquentRepositoryTest extends TestCase
         );
     }
 
-    protected function setUp(): void
+    public function testFirstFunctionWillReturnTheCorrectDataWhenCalledWithChainedConstraint(): void
     {
-        parent::setUp();
+        // Given
+        $user = User::factory()->create();
+        User::factory()->create();
 
-        $this->faker = Faker::create();
+        $expected = UserDto::from($user);
 
-        $this->repository = new EloquentRepository(
-            UserDto::class,
-            User::class,
+        // When
+        /** @noinspection StaticInvocationViaThisInspection */
+        $result = $this->repository->where(
+            'email',
+            $user->email,
+        )->first();
+
+        // Then
+        $this->assertEquals(
+            $expected,
+            $result,
         );
     }
 }

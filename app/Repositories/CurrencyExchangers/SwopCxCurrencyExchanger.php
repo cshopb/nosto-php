@@ -9,7 +9,7 @@ use App\Dtos\CurrenciesExchangers\CurrencyDto;
 use App\Dtos\CurrenciesExchangers\CurrencyExchangerApiConfigDto;
 use App\Dtos\CurrenciesExchangers\CurrencyRateDto;
 use App\Exceptions\ApiCallException;
-use App\Exceptions\CurrencyExchangerException;
+use App\Exceptions\CurrencyExchangerApiException;
 use App\Repositories\Apis\Interfaces\ApiRepositoryInterface;
 use App\Repositories\CurrencyExchangers\Interfaces\CurrencyExchangerInterface;
 use DateTimeImmutable;
@@ -77,8 +77,9 @@ readonly class SwopCxCurrencyExchanger implements CurrencyExchangerInterface
                 },
             );
         } catch (ApiCallException $exception) {
-            throw new CurrencyExchangerException(
+            throw new CurrencyExchangerApiException(
                 message: 'Error grabbing available currencies from ' . static::getProviderName(),
+                code: $exception->getCode(),
                 previous: $exception,
             );
         }
@@ -93,10 +94,10 @@ readonly class SwopCxCurrencyExchanger implements CurrencyExchangerInterface
         return $this->getAvailableCurrencies()->get($currencyCode);
     }
 
-    /**-
+    /**
      * @inheritDoc
      */
-    public function getRateForCurrency(
+    public function getRateForCurrencies(
         CurrencyDto $baseCurrency,
         CurrencyDto $quoteCurrency,
         DateTimeImmutable $date = new DateTimeImmutable(),
@@ -125,12 +126,34 @@ readonly class SwopCxCurrencyExchanger implements CurrencyExchangerInterface
                 },
             );
         } catch (ApiCallException $exception) {
-            throw new CurrencyExchangerException(
-                message: "Error grabbing single rate for $baseCurrency->code from " . static::getProviderName(),
+            $message = "Error grabbing single rate for $baseCurrency->code from " . static::getProviderName();
+            $isNotPremiumAccountException = false;
+            if ($this->isExceptionThrownBecauseAccountIsNotPremium($exception) === true) {
+                $message = 'Please upgrade the account for ' . strtoupper(static::getProviderName())
+                    . " provider to get the rate for $baseCurrency->code";
+
+                $isNotPremiumAccountException = true;
+            }
+
+            throw new CurrencyExchangerApiException(
+                message: $message,
+                code: $exception->getCode(),
                 previous: $exception,
+                isNotPremiumAccountException: $isNotPremiumAccountException,
             );
         }
 
         return $result->get($quoteCurrency->code);
+    }
+
+    private function isExceptionThrownBecauseAccountIsNotPremium(ApiCallException $exception): bool
+    {
+        $content = $exception->getResponse()?->content;
+
+        if ($content === null || is_string($content) === true) {
+            return false;
+        }
+
+        return $content['error']['type'] === 'feature_authorization';
     }
 }

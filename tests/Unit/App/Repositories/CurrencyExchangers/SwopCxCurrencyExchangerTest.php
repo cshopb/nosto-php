@@ -12,7 +12,7 @@ use App\Dtos\CurrenciesExchangers\CurrencyDto;
 use App\Dtos\CurrenciesExchangers\CurrencyExchangerApiConfigDto;
 use App\Dtos\CurrenciesExchangers\CurrencyRateDto;
 use App\Exceptions\ApiCallException;
-use App\Exceptions\CurrencyExchangerException;
+use App\Exceptions\CurrencyExchangerApiException;
 use App\Repositories\Apis\GuzzleApiRepository;
 use App\Repositories\Apis\Interfaces\ApiRepositoryInterface;
 use App\Repositories\CurrencyExchangers\SwopCxCurrencyExchanger;
@@ -30,8 +30,21 @@ class SwopCxCurrencyExchangerTest extends TestCase
     private ApiRepositoryInterface|MockObject $api;
     private CurrencyExchangerApiConfigDto $config;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->faker = Faker::create();
+
+        $this->api = $this->getMockBuilder(GuzzleApiRepository::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $this->config = $this->fakeConfig();
+    }
+
     /**
-     * @throws CurrencyExchangerException
+     * @throws CurrencyExchangerApiException
      */
     public function testGetAvailableCurrenciesFunctionWillGrabDataFromCacheIfItExistsThere(): void
     {
@@ -69,21 +82,8 @@ class SwopCxCurrencyExchangerTest extends TestCase
         );
     }
 
-    private function fakeCurrencyDto(): CurrencyDto
-    {
-        return CurrencyDto::from(
-            [
-                'code' => $this->faker->word(),
-                'numericCode' => $this->faker->numberBetween(100, 999),
-                'decimalDigits' => $this->faker->numberBetween(2, 5),
-                'name' => $this->faker->word(),
-                'active' => $this->faker->boolean(),
-            ],
-        );
-    }
-
     /**
-     * @throws CurrencyExchangerException
+     * @throws CurrencyExchangerApiException
      */
     public function testGetAvailableCurrenciesFunctionWillGrabDataFromApiIfItIsNotInCache(): void
     {
@@ -125,19 +125,6 @@ class SwopCxCurrencyExchangerTest extends TestCase
         );
     }
 
-    private function fakeApiResponseDto(array|string $content = ''): ApiResponseDto
-    {
-        return ApiResponseDto::from(
-            [
-                'statusCode' => ApiResponseStatusCodeEnum::HTTP_OK->value,
-                'headers' => [
-                    'contentType' => ApiResponseContentTypeEnum::JSON->value,
-                ],
-                'content' => $content,
-            ],
-        );
-    }
-
     public function testGetAvailableCurrenciesFunctionWillThrowAnExceptionIfThereIsAnExceptionThrownByApiCall(): void
     {
         // Given
@@ -155,14 +142,14 @@ class SwopCxCurrencyExchangerTest extends TestCase
             $this->config,
         );
 
-        $this->expectException(CurrencyExchangerException::class);
+        $this->expectException(CurrencyExchangerApiException::class);
 
         // When
         $exchanger->getAvailableCurrencies();
     }
 
     /**
-     * @throws CurrencyExchangerException
+     * @throws CurrencyExchangerApiException
      */
     public function testGetCurrencyFromCodeFunctionWillReturnTheCorrectValueIfExists(): void
     {
@@ -206,7 +193,7 @@ class SwopCxCurrencyExchangerTest extends TestCase
     }
 
     /**
-     * @throws CurrencyExchangerException
+     * @throws CurrencyExchangerApiException
      */
     public function testGetCurrencyFromCodeFunctionWillReturnNullIfNoDataFound(): void
     {
@@ -249,7 +236,7 @@ class SwopCxCurrencyExchangerTest extends TestCase
     }
 
     /**
-     * @throws CurrencyExchangerException
+     * @throws CurrencyExchangerApiException
      */
     public function testGetRateForCurrencyFunctionWillGrabDataFromCacheIfItExistsThere(): void
     {
@@ -285,7 +272,7 @@ class SwopCxCurrencyExchangerTest extends TestCase
             ->andReturn($currencyRateCollection);
 
         // When
-        $result = $exchanger->getRateForCurrency(
+        $result = $exchanger->getRateForCurrencies(
             $baseCurrency,
             $expectedCurrencyRate->quoteCurrency,
         );
@@ -297,20 +284,8 @@ class SwopCxCurrencyExchangerTest extends TestCase
         );
     }
 
-    private function fakeCurrencyRateDto(?CurrencyDto $baseCurrency = null): CurrencyRateDto
-    {
-        return CurrencyRateDto::from(
-            [
-                'baseCurrency' => $baseCurrency ?? $this->fakeCurrencyDto(),
-                'quoteCurrency' => $this->fakeCurrencyDto(),
-                'quote' => $this->faker->randomFloat(6),
-                'date' => $this->faker->dateTime(),
-            ],
-        );
-    }
-
     /**
-     * @throws CurrencyExchangerException
+     * @throws CurrencyExchangerApiException
      */
     public function testGetRateForCurrencyFunctionWillGrabDataFromApiIfItIsNotInCache(): void
     {
@@ -343,7 +318,7 @@ class SwopCxCurrencyExchangerTest extends TestCase
         );
 
         // When
-        $result = $exchanger->getRateForCurrency(
+        $result = $exchanger->getRateForCurrencies(
             $baseCurrency,
             $expectedCurrencyRate->quoteCurrency,
             $date,
@@ -357,7 +332,7 @@ class SwopCxCurrencyExchangerTest extends TestCase
     }
 
     /**
-     * @throws CurrencyExchangerException
+     * @throws CurrencyExchangerApiException
      */
     public function testGetRateForCurrencyFunctionWillReturnNullIfNoDataFound(): void
     {
@@ -391,7 +366,7 @@ class SwopCxCurrencyExchangerTest extends TestCase
             ->andReturn($currencyCollection);
 
         // When
-        $result = $exchanger->getRateForCurrency(
+        $result = $exchanger->getRateForCurrencies(
             $baseCurrency,
             $this->fakeCurrencyDto(),
         );
@@ -403,7 +378,7 @@ class SwopCxCurrencyExchangerTest extends TestCase
         );
     }
 
-    public function testGetRateForCurrencyFunctionWillThrowAnExceptionIfThereIsAnExceptionThrownByApiCall(): void
+    public function testGetRateForCurrencyFunctionWillThrowAnExceptionWithGenericMessageIfThereIsAnExceptionThrownByApiCall(): void
     {
         // Given
         $date = DateTimeImmutable::createFromMutable($this->faker->dateTime());
@@ -426,27 +401,63 @@ class SwopCxCurrencyExchangerTest extends TestCase
             $this->config,
         );
 
-        $this->expectException(CurrencyExchangerException::class);
+        $this->expectException(CurrencyExchangerApiException::class);
+        $this->expectExceptionMessage("Error grabbing single rate for {$baseCurrency->code} from swop-cx");
 
         // When
-        $exchanger->getRateForCurrency(
+        $exchanger->getRateForCurrencies(
             $baseCurrency,
             $this->fakeCurrencyDto(),
             $date,
         );
     }
 
-    protected function setUp(): void
+    public function testGetRateForCurrencyFunctionWillThrowAnExceptionWithPremiumMessageIfThereIsAnExceptionThrownByApiCall(): void
     {
-        parent::setUp();
+        // Given
+        $date = DateTimeImmutable::createFromMutable($this->faker->dateTime());
+        $baseCurrency = $this->fakeCurrencyDto();
 
-        $this->faker = Faker::create();
+        $responseDto = ApiResponseDto::from(
+            [
+                'statusCode' => ApiResponseStatusCodeEnum::HTTP_UNAUTHORIZED,
+                'headers' => [],
+                'content' => [
+                    'error' => [
+                        'type' => 'feature_authorization',
+                    ],
+                ],
+            ],
+        );
 
-        $this->api = $this->getMockBuilder(GuzzleApiRepository::class)
-            ->disableOriginalConstructor()
-            ->getMock();
+        $this->api
+            ->expects($this->once())
+            ->method('get')
+            ->with(
+                $this->config->uri->getListOfRatesUri(
+                    $baseCurrency,
+                    $date,
+                ),
+                ApiRequestOptionsDto::fromApiConfig($this->config),
+            )
+            ->willThrowException(new ApiCallException(response: $responseDto));
 
-        $this->config = $this->fakeConfig();
+        $exchanger = new SwopCxCurrencyExchanger(
+            $this->api,
+            $this->config,
+        );
+
+        $this->expectException(CurrencyExchangerApiException::class);
+        $this->expectExceptionMessage(
+            "Please upgrade the account for SWOP-CX provider to get the rate for {$baseCurrency->code}",
+        );
+
+        // When
+        $exchanger->getRateForCurrencies(
+            $baseCurrency,
+            $this->fakeCurrencyDto(),
+            $date,
+        );
     }
 
     private function fakeConfig(): CurrencyExchangerApiConfigDto
@@ -458,6 +469,44 @@ class SwopCxCurrencyExchangerTest extends TestCase
                     'listOfRates' => $this->faker->word(),
                     'availableCurrencies' => $this->faker->word(),
                 ],
+            ],
+        );
+    }
+
+    private function fakeCurrencyDto(): CurrencyDto
+    {
+        return CurrencyDto::from(
+            [
+                'code' => $this->faker->word(),
+                'numericCode' => $this->faker->numberBetween(100, 999),
+                'decimalDigits' => $this->faker->numberBetween(2, 5),
+                'name' => $this->faker->word(),
+                'active' => $this->faker->boolean(),
+            ],
+        );
+    }
+
+    private function fakeApiResponseDto(array|string $content = ''): ApiResponseDto
+    {
+        return ApiResponseDto::from(
+            [
+                'statusCode' => ApiResponseStatusCodeEnum::HTTP_OK->value,
+                'headers' => [
+                    'contentType' => ApiResponseContentTypeEnum::JSON->value,
+                ],
+                'content' => $content,
+            ],
+        );
+    }
+
+    private function fakeCurrencyRateDto(?CurrencyDto $baseCurrency = null): CurrencyRateDto
+    {
+        return CurrencyRateDto::from(
+            [
+                'baseCurrency' => $baseCurrency ?? $this->fakeCurrencyDto(),
+                'quoteCurrency' => $this->fakeCurrencyDto(),
+                'quote' => $this->faker->randomFloat(6),
+                'date' => $this->faker->dateTime(),
             ],
         );
     }

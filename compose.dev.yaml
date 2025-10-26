@@ -40,6 +40,8 @@ services:
     depends_on:
       db:
         condition: service_started
+      redis:
+        condition: service_started
 
   php-cli:
     build:
@@ -57,6 +59,8 @@ services:
     container_name: dev-cli
     tty: true # Enables an interactive terminal
     stdin_open: true # Keeps standard input open for 'docker exec'
+    environment:
+      - NODE_ENV=development
     volumes:
       - ./:/var/www
     networks:

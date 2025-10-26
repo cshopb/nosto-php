@@ -1,20 +1,9 @@
 <?php
 
-use App\Http\Controllers\TestController;
+use App\Http\Controllers\CurrencyExchange\CurrencyExchangerController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get(
     '/',
-    [
-        TestController::class,
-        'foo',
-    ],
-)->name('home');
-
-Route::get('dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
-require __DIR__ . '/settings.php';
-require __DIR__ . '/auth.php';
+    CurrencyExchangerController::class,
+)->name('exchange');
