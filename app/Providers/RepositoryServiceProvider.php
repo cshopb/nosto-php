@@ -5,9 +5,11 @@ namespace App\Providers;
 use App\Repositories\Apis\GuzzleApiRepository;
 use App\Repositories\CurrencyExchangers\Interfaces\CurrencyExchangerInterface;
 use App\Repositories\CurrencyExchangers\SwopCxCurrencyExchanger;
-use GuzzleHttp\Client;
+use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Contracts\Support\DeferrableProvider;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\ServiceProvider;
+use InfluxDB2\Client as InfluxDbClient;
 
 class RepositoryServiceProvider extends ServiceProvider implements DeferrableProvider
 {
@@ -26,9 +28,11 @@ class RepositoryServiceProvider extends ServiceProvider implements DeferrablePro
                 CurrencyExchangerInterface::class,
                 function (): CurrencyExchangerInterface {
                     $config = static::$currencyExchanger::getConfig();
+                    $influxDb = App::make(InfluxDbClient::class);
 
                     $api = new GuzzleApiRepository(
-                        new Client(['base_uri' => $config->uri->base]),
+                        new GuzzleClient(['base_uri' => $config->uri->base]),
+                        $influxDb,
                     );
 
                     return new static::$currencyExchanger(
