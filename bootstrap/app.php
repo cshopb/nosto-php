@@ -74,7 +74,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return Inertia::render(
                     $request->header('x-inertia-partial-component'),
                     [
-                        'errors' => FrontendExceptionDto::fromException($exception),
+                        'errors' => $frontendExceptionDto,
                     ],
                 )
                     ->toResponse($request)

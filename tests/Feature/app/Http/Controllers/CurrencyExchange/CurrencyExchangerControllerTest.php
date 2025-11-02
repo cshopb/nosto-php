@@ -7,34 +7,74 @@ use App\Dtos\CurrenciesExchangers\Collections\CurrencyCollection;
 use App\Dtos\CurrenciesExchangers\CurrencyDto;
 use App\Dtos\CurrenciesExchangers\CurrencyRateDto;
 use App\Exceptions\CurrencyExchangerApiException;
+use App\Exceptions\CurrencyExchangerControllerException;
 use App\Repositories\CurrencyExchangers\Interfaces\CurrencyExchangerInterface;
 use App\Repositories\Monitoring\Interface\MonitoringRepositoryInterface;
 use DateTimeImmutable;
-use Faker\Factory as Faker;
-use Faker\Generator;
+use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Http\Request;
+use Inertia\Middleware;
 use Inertia\Testing\AssertableInertia as Assert;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
 class CurrencyExchangerControllerTest extends TestCase
 {
-    private Generator $faker;
+    use WithFaker;
 
-    protected function setUp(): void
+    public function testNonInertiaRequestWillReturnDefaultCurrencyIfBaseCurrencyReturnsNull(): void
     {
-        parent::setUp();
+        // Given
+        $this->mock(
+            CurrencyExchangerInterface::class,
+            function (MockInterface $mock): void {
+                $expectedBaseCurrency = $this->fakeCurrencyDto();
+                $quoteCurrency = $this->fakeCurrencyDto();
 
-        $this->faker = Faker::create();
+                $mock->expects('getCurrencyFromCode')
+                    ->times(3)
+                    ->andReturn(
+                        null,
+                        $expectedBaseCurrency,
+                        $quoteCurrency,
+                    );
+
+                $mock->expects('getAvailableCurrencies')
+                    ->once()
+                    ->andReturn(CurrencyCollection::make());
+
+                $mock->expects('getRateForCurrencies')
+                    ->once()
+                    ->with(
+                        $expectedBaseCurrency,
+                        $quoteCurrency,
+                    )
+                    ->andReturn($this->fakeCurrencyRateDto());
+            },
+        );
+
+        $route = route(
+            'exchange',
+            [
+                'baseCurrency' => 'BCC',
+            ],
+        );
+
+        // When
+        $response = $this->get($route);
+
+        // Then
+        $response->assertStatus(ApiResponseStatusCodeEnum::HTTP_OK->value);
     }
 
-    public function testRequestWillThrowUnprocessableEntityExceptionIfBaseCurrencyReturnsNull(): void
+    public function testInertiaRequestWillThrowUnprocessableEntityExceptionIfBaseCurrencyReturnsNull(): void
     {
         // Given
         $this->mock(
             CurrencyExchangerInterface::class,
             function (MockInterface $mock): void {
                 $mock->expects('getCurrencyFromCode')
-                    ->twice()
+                    ->once()
                     ->andReturn(
                         null,
                         $this->fakeCurrencyDto(),
@@ -58,13 +98,58 @@ class CurrencyExchangerControllerTest extends TestCase
         );
 
         // When
-        $response = $this->get($route);
+        $response = $this->get(
+            $route,
+            $this->getInertiaHeaders(),
+        );
 
         // Then
         $response->assertStatus(ApiResponseStatusCodeEnum::HTTP_UNPROCESSABLE_ENTITY->value);
     }
 
-    public function testRequestWillThrowInternalServerErrorEntityExceptionIfErrorGettingBaseCurrency(): void
+    public function testNonInertiaRequestWillThrowInternalServerErrorEntityExceptionIfErrorGettingBaseCurrency(): void
+    {
+        // Given
+        $this->mock(
+            CurrencyExchangerInterface::class,
+            function (MockInterface $mock): void {
+                /** @var ApiResponseStatusCodeEnum $exceptionCode */
+                $exceptionCode = $this->faker
+                    ->randomElement(
+                        ApiResponseStatusCodeEnum::cases(),
+                    );
+
+                $mock->expects('getCurrencyFromCode')
+                    ->twice()
+                    ->andThrow(
+                        new CurrencyExchangerApiException(code: $exceptionCode->value),
+                    );
+            },
+        );
+
+        $this->mock(
+            MonitoringRepositoryInterface::class,
+            function (MockInterface $mock): void {
+                $mock->expects('recordException')
+                    ->once();
+            },
+        );
+
+        $route = route(
+            'exchange',
+            [
+                'baseCurrency' => 'BCC',
+            ],
+        );
+
+        // When
+        $response = $this->get($route);
+
+        // Then
+        $response->assertStatus(ApiResponseStatusCodeEnum::HTTP_INTERNAL_SERVER_ERROR->value);
+    }
+
+    public function testInertiaRequestWillThrowInternalServerErrorEntityExceptionIfErrorGettingBaseCurrency(): void
     {
         // Given
         $this->mock(
@@ -100,13 +185,66 @@ class CurrencyExchangerControllerTest extends TestCase
         );
 
         // When
-        $response = $this->get($route);
+        $response = $this->get(
+            $route,
+            $this->getInertiaHeaders(),
+        );
 
         // Then
         $response->assertStatus(ApiResponseStatusCodeEnum::HTTP_INTERNAL_SERVER_ERROR->value);
+
+        $this->assertInstanceOf(
+            CurrencyExchangerControllerException::class,
+            $response->exceptions->first(),
+        );
     }
 
-    public function testRequestWillThrowUnprocessableEntityExceptionIfQuoteCurrencyReturnsNull(): void
+    public function testNonInertiaRequestWillReturnDefaultCurrencyIfQuoteCurrencyReturnsNull(): void
+    {
+        // Given
+        $this->mock(
+            CurrencyExchangerInterface::class,
+            function (MockInterface $mock): void {
+                $baseCurrency = $this->fakeCurrencyDto();
+                $expectedQuoteCurrency = $this->fakeCurrencyDto();
+
+                $mock->expects('getCurrencyFromCode')
+                    ->times(3)
+                    ->andReturn(
+                        $baseCurrency,
+                        null,
+                        $expectedQuoteCurrency,
+                    );
+
+                $mock->expects('getAvailableCurrencies')
+                    ->once()
+                    ->andReturn(CurrencyCollection::make());
+
+                $mock->expects('getRateForCurrencies')
+                    ->once()
+                    ->with(
+                        $baseCurrency,
+                        $expectedQuoteCurrency,
+                    )
+                    ->andReturn($this->fakeCurrencyRateDto());
+            },
+        );
+
+        $route = route(
+            'exchange',
+            [
+                'quoteCurrency' => 'QCC',
+            ],
+        );
+
+        // When
+        $response = $this->get($route);
+
+        // Then
+        $response->assertStatus(ApiResponseStatusCodeEnum::HTTP_OK->value);
+    }
+
+    public function testInertiaRequestWillThrowUnprocessableEntityExceptionIfQuoteCurrencyReturnsNull(): void
     {
         // Given
         $this->mock(
@@ -137,13 +275,58 @@ class CurrencyExchangerControllerTest extends TestCase
         );
 
         // When
-        $response = $this->get($route);
+        $response = $this->get(
+            $route,
+            $this->getInertiaHeaders(),
+        );
 
         // Then
         $response->assertStatus(ApiResponseStatusCodeEnum::HTTP_UNPROCESSABLE_ENTITY->value);
     }
 
-    public function testRequestWillThrowInternalServerErrorEntityExceptionIfErrorGettingQuoteCurrency(): void
+    public function testNonInertiaRequestWillThrowInternalServerErrorEntityExceptionIfErrorGettingQuoteCurrency(): void
+    {
+        // Given
+        $this->mock(
+            CurrencyExchangerInterface::class,
+            function (MockInterface $mock): void {
+                /** @var ApiResponseStatusCodeEnum $exceptionCode */
+                $exceptionCode = $this->faker
+                    ->randomElement(
+                        ApiResponseStatusCodeEnum::cases(),
+                    );
+
+                $mock->expects('getCurrencyFromCode')
+                    ->twice()
+                    ->andThrow(
+                        new CurrencyExchangerApiException(code: $exceptionCode->value),
+                    );
+            },
+        );
+
+        $this->mock(
+            MonitoringRepositoryInterface::class,
+            function (MockInterface $mock): void {
+                $mock->expects('recordException')
+                    ->once();
+            },
+        );
+
+        $route = route(
+            'exchange',
+            [
+                'baseCurrency' => 'BCC',
+            ],
+        );
+
+        // When
+        $response = $this->get($route);
+
+        // Then
+        $response->assertStatus(ApiResponseStatusCodeEnum::HTTP_INTERNAL_SERVER_ERROR->value);
+    }
+
+    public function testInertiaRequestWillThrowInternalServerErrorEntityExceptionIfErrorGettingQuoteCurrency(): void
     {
         // Given
         $this->mock(
@@ -179,7 +362,10 @@ class CurrencyExchangerControllerTest extends TestCase
         );
 
         // When
-        $response = $this->get($route);
+        $response = $this->get(
+            $route,
+            $this->getInertiaHeaders(),
+        );
 
         // Then
         $response->assertStatus(ApiResponseStatusCodeEnum::HTTP_INTERNAL_SERVER_ERROR->value);
@@ -309,7 +495,7 @@ class CurrencyExchangerControllerTest extends TestCase
 
                 $mock->expects('getAvailableCurrencies')
                     ->once()
-                    ->andReturn(CurrencyCollection::make([]));
+                    ->andReturn(CurrencyCollection::make());
 
                 $mock->expects('getRateForCurrencies')
                     ->once()
@@ -363,7 +549,7 @@ class CurrencyExchangerControllerTest extends TestCase
 
                 $mock->expects('getAvailableCurrencies')
                     ->once()
-                    ->andReturn(CurrencyCollection::make([]));
+                    ->andReturn(CurrencyCollection::make());
 
                 $mock->expects('getRateForCurrencies')
                     ->once()
@@ -402,18 +588,7 @@ class CurrencyExchangerControllerTest extends TestCase
     public function testGetRateForCurrenciesWillReturnCorrectValueIfEverythingIsOk(): void
     {
         // Given
-        $expectedReturn = CurrencyRateDto::from(
-            [
-                'baseCurrency' => $this->fakeCurrencyDto(),
-                'quoteCurrency' => $this->fakeCurrencyDto(),
-                'quote' => $this->faker->randomFloat(
-                    4,
-                    1,
-                    10,
-                ),
-                'date' => new DateTimeImmutable(),
-            ],
-        );
+        $expectedReturn = $this->fakeCurrencyRateDto();
 
         $this->mock(
             CurrencyExchangerInterface::class,
@@ -425,15 +600,9 @@ class CurrencyExchangerControllerTest extends TestCase
                         $expectedReturn->quoteCurrency,
                     );
 
-                /** @var ApiResponseStatusCodeEnum $exceptionCode */
-                $exceptionCode = $this->faker
-                    ->randomElement(
-                        ApiResponseStatusCodeEnum::cases(),
-                    );
-
                 $mock->expects('getAvailableCurrencies')
                     ->once()
-                    ->andReturn(CurrencyCollection::make([]));
+                    ->andReturn(CurrencyCollection::make());
 
                 $mock->expects('getRateForCurrencies')
                     ->twice()
@@ -518,5 +687,31 @@ class CurrencyExchangerControllerTest extends TestCase
                 'active' => $this->faker->boolean(),
             ],
         );
+    }
+
+    private function fakeCurrencyRateDto(): CurrencyRateDto
+    {
+        return CurrencyRateDto::from(
+            [
+                'baseCurrency' => $this->fakeCurrencyDto(),
+                'quoteCurrency' => $this->fakeCurrencyDto(),
+                'quote' => $this->faker->randomFloat(
+                    4,
+                    1,
+                    10,
+                ),
+                'date' => new DateTimeImmutable(),
+            ],
+        );
+    }
+
+    private function getInertiaHeaders(): array
+    {
+        $middleware = new Middleware();
+
+        return [
+            'x-inertia' => true,
+            'x-inertia-version' => $middleware->version(new Request()),
+        ];
     }
 }
