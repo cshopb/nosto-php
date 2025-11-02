@@ -5,15 +5,14 @@ use App\Dtos\Exceptions\FrontendExceptionDto;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\UseViteNonce;
+use App\Repositories\Monitoring\Interface\MonitoringRepositoryInterface;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
-use InfluxDB2\Client;
-use InfluxDB2\Point;
-use InfluxDB2\WriteType;
 use Spatie\Csp\AddCspHeaders;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -37,34 +36,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->report(
             function (Exception $exception) {
-                $point = new Point('exception')
-                    ->addTag(
-                        'exception_class',
-                        get_class($exception),
-                    )
-                    ->addField(
-                        'code',
-                        $exception->getCode(),
-                    )
-                    ->addField(
-                        'message',
-                        $exception->getMessage(),
-                    )
-                    ->addField(
-                        'trace',
-                        $exception->getTraceAsString(),
-                    )
-                    ->time(new DateTimeImmutable());
+                $monitoring = App::make(MonitoringRepositoryInterface::class);
 
-                $influxDb = \Illuminate\Support\Facades\App::make(Client::class);
-                $writeInfluxDb = $influxDb->createWriteApi(
-                    [
-                        'writeType' => WriteType::SYNCHRONOUS,
-                    ],
-                );
-
-                $writeInfluxDb->write($point);
-                $writeInfluxDb->close();
+                $monitoring->recordException($exception);
             },
         );
 

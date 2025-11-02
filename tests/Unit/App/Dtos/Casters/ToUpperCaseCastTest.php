@@ -3,25 +3,22 @@
 namespace Tests\Unit\App\Dtos\Casters;
 
 use App\Dtos\Casters\ToUpperCaseCast;
-use Faker\Factory as Faker;
-use Faker\Generator;
-use PHPUnit\Framework\MockObject\MockObject;
+use Illuminate\Foundation\Testing\WithFaker;
 use Spatie\LaravelData\Support\Creation\CreationContext;
 use Spatie\LaravelData\Support\DataProperty;
 use Tests\TestCase;
 
 class ToUpperCaseCastTest extends TestCase
 {
+    use WithFaker;
+
     private DataProperty $dataProperty;
     private CreationContext $creationContext;
     private ToUpperCaseCast $caster;
-    private Generator $faker;
 
-    public function __construct(string $name)
+    protected function setUp(): void
     {
-        parent::__construct($name);
-
-        $this->faker = Faker::create();
+        parent::setUp();
 
         $this->dataProperty = $this->getMockBuilder(DataProperty::class)
             ->disableOriginalConstructor()

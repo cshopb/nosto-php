@@ -1,28 +1,25 @@
 <?php
 
-namespace Tests\Unit\App\Repositories;
+namespace Tests\Unit\App\Repositories\Dbs;
 
 use App\Dtos\UserDto;
 use App\Models\User;
 use App\Repositories\Dbs\EloquentRepository;
-use Faker\Factory as Faker;
-use Faker\Generator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase;
+use Illuminate\Foundation\Testing\WithFaker;
 
 class EloquentRepositoryTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase,
+        WithFaker;
 
     private EloquentRepository $repository;
-    private Generator $faker;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $this->faker = Faker::create();
 
         $this->repository = new EloquentRepository(
             UserDto::class,

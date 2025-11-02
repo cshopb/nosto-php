@@ -3,15 +3,22 @@
 namespace Tests\Unit\App\Helpers;
 
 use App\Helpers\JsonHelper;
-use Faker\Factory as Faker;
-use Faker\Generator;
+use Illuminate\Foundation\Testing\WithFaker;
 use JsonException;
 use Tests\TestCase;
 
 class JsonHelperTest extends TestCase
 {
+    use WithFaker;
+
     private JsonHelper $jsonHelper;
-    private Generator $faker;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->jsonHelper = new JsonHelper();
+    }
 
     /**
      * @throws JsonException
@@ -67,13 +74,5 @@ class JsonHelperTest extends TestCase
             $expectedValue,
             $result,
         );
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->faker = Faker::create();
-        $this->jsonHelper = new JsonHelper();
     }
 }
