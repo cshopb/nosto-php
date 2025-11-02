@@ -7,7 +7,6 @@ use App\Dtos\Apis\Normalizers\GuzzleResponseNormalizer;
 use Spatie\LaravelData\Attributes\MapName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\KebabCaseMapper;
-use Spatie\LaravelData\Normalizers\ArrayNormalizer;
 
 #[MapName(KebabCaseMapper::class)]
 class ApiResponseDto extends Data
@@ -24,7 +23,7 @@ class ApiResponseDto extends Data
     {
         return [
             GuzzleResponseNormalizer::class,
-            ArrayNormalizer::class,
+            ...parent::normalizers(),
         ];
     }
 }

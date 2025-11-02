@@ -11,6 +11,7 @@ use App\Exceptions\CurrencyExchangerApiException;
 use App\Exceptions\CurrencyExchangerControllerException;
 use App\Http\Controllers\Controller;
 use App\Repositories\CurrencyExchangers\Interfaces\CurrencyExchangerInterface;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,44 +22,95 @@ class CurrencyExchangerController extends Controller
     }
 
     /**
-     * @param CurrencyExchangerRequestDto $requestDto
+     * @param Request $request
      *
      * @return Response
      * @throws CurrencyExchangerControllerException
      */
-    public function __invoke(CurrencyExchangerRequestDto $requestDto): Response
+    public function __invoke(Request $request): Response
+    {
+        $requestDto = CurrencyExchangerRequestDto::fromRequest($request);
+
+        $baseCurrencyDto = $this->getBaseCurrency($requestDto);
+        $quotedCurrencyDto = $this->getQuoteCurrency($requestDto);
+
+        return Inertia::render(
+            'CurrencyExchanger/Index',
+            [
+                'availableCurrencies' => fn() => $this->getAvailableCurrencies(),
+                'currencyRate' => fn() => $this->getRateForCurrencies(
+                    $baseCurrencyDto,
+                    $quotedCurrencyDto,
+                ),
+            ],
+        );
+
+    }
+
+    /**
+     * @param CurrencyExchangerRequestDto $requestDto
+     *
+     * @return CurrencyDto
+     * @throws CurrencyExchangerControllerException
+     */
+    private function getBaseCurrency(CurrencyExchangerRequestDto $requestDto): CurrencyDto
     {
         try {
-            $baseCurrencyDto = $this->exchanger->getCurrencyFromCode($requestDto->baseCurrency);
-            $quotedCurrencyDto = $this->exchanger->getCurrencyFromCode($requestDto->quoteCurrency);
-
-            if ($baseCurrencyDto === null) {
-                throw new CurrencyExchangerControllerException(
-                    message: "Currency {$requestDto->baseCurrency} doesn't exist",
-                    code: ApiResponseStatusCodeEnum::HTTP_UNPROCESSABLE_ENTITY->value,
-                );
+            $currency = $this->getCurrencyFromCode($requestDto->baseCurrency);
+        } catch (CurrencyExchangerControllerException $exception) {
+            if ($requestDto->isInertiaRequest === true) {
+                throw $exception;
             }
 
-            if ($quotedCurrencyDto === null) {
-                throw new CurrencyExchangerControllerException(
-                    message: "Currency {$requestDto->quoteCurrency} doesn't exist",
-                    code: ApiResponseStatusCodeEnum::HTTP_UNPROCESSABLE_ENTITY->value,
-                );
+            $currency = $this->getCurrencyFromCode($requestDto::DEFAULT_BASE_CURRENCY);
+        }
+
+        return $currency;
+    }
+
+    /**
+     * @param CurrencyExchangerRequestDto $requestDto
+     *
+     * @return CurrencyDto
+     * @throws CurrencyExchangerControllerException
+     */
+    private function getQuoteCurrency(CurrencyExchangerRequestDto $requestDto): CurrencyDto
+    {
+        try {
+            $currency = $this->getCurrencyFromCode($requestDto->quoteCurrency);
+        } catch (CurrencyExchangerControllerException $exception) {
+            if ($requestDto->isInertiaRequest === true) {
+                throw $exception;
             }
 
-            return Inertia::render(
-                'CurrencyExchanger/Index',
-                [
-                    'availableCurrencies' => fn() => $this->getAvailableCurrencies(),
-                    'currencyRate' => fn() => $this->getRateForCurrencies(
-                        $baseCurrencyDto,
-                        $quotedCurrencyDto,
-                    ),
-                ],
-            );
+            $currency = $this->getCurrencyFromCode($requestDto::DEFAULT_QUOTE_CURRENCY);
+        }
+
+        return $currency;
+    }
+
+    /**
+     * @param string $code
+     *
+     * @return CurrencyDto
+     * @throws CurrencyExchangerControllerException
+     */
+    private function getCurrencyFromCode(string $code): CurrencyDto
+    {
+        try {
+            $currency = $this->exchanger->getCurrencyFromCode($code);
         } catch (CurrencyExchangerApiException $exception) {
             $this->throwFinalExchangerException($exception);
         }
+
+        if ($currency === null) {
+            throw new CurrencyExchangerControllerException(
+                message: "Currency $code doesn't exist",
+                code: ApiResponseStatusCodeEnum::HTTP_UNPROCESSABLE_ENTITY->value,
+            );
+        }
+
+        return $currency;
     }
 
     /**
