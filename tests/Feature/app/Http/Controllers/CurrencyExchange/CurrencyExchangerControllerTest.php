@@ -406,7 +406,11 @@ class CurrencyExchangerControllerTest extends TestCase
             [
                 'baseCurrency' => $this->fakeCurrencyDto(),
                 'quoteCurrency' => $this->fakeCurrencyDto(),
-                'quote' => $this->faker->randomFloat(),
+                'quote' => $this->faker->randomFloat(
+                    4,
+                    1,
+                    10,
+                ),
                 'date' => new DateTimeImmutable(),
             ],
         );

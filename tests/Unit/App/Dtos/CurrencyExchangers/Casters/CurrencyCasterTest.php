@@ -56,19 +56,21 @@ class CurrencyCasterTest extends TestCase
         $expectedValue = $this->fakeCurrencyDto();
 
         // When
-        $resultCast = $this->caster->cast(
-            $this->dataProperty,
-            $expectedValue,
-            [],
-            $this->creationContext,
-        );
+        $resultCast = $this->caster
+            ->cast(
+                $this->dataProperty,
+                $expectedValue,
+                [],
+                $this->creationContext,
+            );
 
-        $resultIteratorCast = $this->caster->castIterableItem(
-            $this->dataProperty,
-            $expectedValue,
-            [],
-            $this->creationContext,
-        );
+        $resultIteratorCast = $this->caster
+            ->castIterableItem(
+                $this->dataProperty,
+                $expectedValue,
+                [],
+                $this->creationContext,
+            );
 
         // Then
         $this->assertEquals(
@@ -104,19 +106,21 @@ class CurrencyCasterTest extends TestCase
         $expectedValue = Uncastable::create();
 
         // When
-        $resultCast = $this->caster->cast(
-            $this->dataProperty,
-            $this->faker->numberBetween(),
-            [],
-            $this->creationContext,
-        );
+        $resultCast = $this->caster
+            ->cast(
+                $this->dataProperty,
+                $this->faker->numberBetween(),
+                [],
+                $this->creationContext,
+            );
 
-        $resultIteratorCast = $this->caster->castIterableItem(
-            $this->dataProperty,
-            $this->faker->numberBetween(),
-            [],
-            $this->creationContext,
-        );
+        $resultIteratorCast = $this->caster
+            ->castIterableItem(
+                $this->dataProperty,
+                $this->faker->numberBetween(),
+                [],
+                $this->creationContext,
+            );
 
         // Then
         $this->assertEquals(
