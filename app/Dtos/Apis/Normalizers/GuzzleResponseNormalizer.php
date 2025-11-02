@@ -31,7 +31,7 @@ readonly class GuzzleResponseNormalizer implements Normalizer
 
         $normalizedHeaders = $this->normalizeHeaders($value);
         $normalizedHeaders[ApiResponseContentTypeEnum::getHeaderName()] = $this->normalizeContentType(
-            $normalizedHeaders[ApiResponseContentTypeEnum::getHeaderName()],
+            $normalizedHeaders[ApiResponseContentTypeEnum::getHeaderName()] ?? '',
         );
 
         return [

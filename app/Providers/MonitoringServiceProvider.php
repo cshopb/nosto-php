@@ -3,22 +3,24 @@
 namespace App\Providers;
 
 use App\Dtos\Config\InfluxDbConfigDto;
+use App\Repositories\Monitoring\InfluxDbMonitoringRepository;
+use App\Repositories\Monitoring\Interface\MonitoringRepositoryInterface;
 use Illuminate\Contracts\Support\DeferrableProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use InfluxDB2\Client;
 use InfluxDB2\Model\WritePrecision;
 
-class InfluxDbServiceProvider extends ServiceProvider implements DeferrableProvider
+class MonitoringServiceProvider extends ServiceProvider implements DeferrableProvider
 {
     public function register(): void
     {
         $this->app->singleton(
-            Client::class,
+            MonitoringRepositoryInterface::class,
             function (Application $app) {
                 $config = InfluxDbConfigDto::getFromConfig();
 
-                return new Client(
+                $client = new Client(
                     [
                         'url' => $config->url,
                         'token' => $config->token,
@@ -27,6 +29,8 @@ class InfluxDbServiceProvider extends ServiceProvider implements DeferrableProvi
                         'precision' => WritePrecision::NS,
                     ],
                 );
+
+                return new InfluxDbMonitoringRepository($client);
             },
         );
     }
@@ -39,7 +43,7 @@ class InfluxDbServiceProvider extends ServiceProvider implements DeferrableProvi
     public function provides(): array
     {
         return [
-            Client::class,
+            MonitoringRepositoryInterface::class,
         ];
     }
 }

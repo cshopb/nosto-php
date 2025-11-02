@@ -6,10 +6,9 @@ use App\Dtos\CurrenciesExchangers\Casters\CurrencyCaster;
 use App\Dtos\CurrenciesExchangers\CurrencyDto;
 use App\Exceptions\CurrencyExchangerApiException;
 use App\Exceptions\DataCasterException;
-use App\Providers\RepositoryServiceProvider;
+use App\Providers\ExchangerRepositoryServiceProvider;
 use App\Repositories\CurrencyExchangers\Interfaces\CurrencyExchangerInterface;
-use Faker\Factory as Faker;
-use Faker\Generator;
+use Illuminate\Foundation\Testing\WithFaker;
 use PHPUnit\Framework\MockObject\MockObject;
 use Spatie\LaravelData\Casts\Uncastable;
 use Spatie\LaravelData\Support\Creation\CreationContext;
@@ -18,11 +17,35 @@ use Tests\TestCase;
 
 class CurrencyCasterTest extends TestCase
 {
-    private Generator $faker;
+    use WithFaker;
+
     private DataProperty $dataProperty;
     private CreationContext $creationContext;
     private CurrencyExchangerInterface|MockObject $exchanger;
     private CurrencyCaster $caster;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->dataProperty = $this->getMockBuilder(DataProperty::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+
+        $this->creationContext = $this->getMockBuilder(CreationContext::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        /** @var CurrencyExchangerInterface|MockObject $exchanger */
+        $exchanger = $this->getMockBuilder(ExchangerRepositoryServiceProvider::$currencyExchanger)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $this->exchanger = $exchanger;
+
+        $this->caster = new CurrencyCaster($exchanger);
+    }
 
     /**
      * @throws DataCasterException
@@ -239,30 +262,5 @@ class CurrencyCasterTest extends TestCase
             [],
             $this->creationContext,
         );
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->faker = Faker::create();
-
-        $this->dataProperty = $this->getMockBuilder(DataProperty::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-
-        $this->creationContext = $this->getMockBuilder(CreationContext::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        /** @var CurrencyExchangerInterface|MockObject $exchanger */
-        $exchanger = $this->getMockBuilder(RepositoryServiceProvider::$currencyExchanger)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        $this->exchanger = $exchanger;
-
-        $this->caster = new CurrencyCaster($exchanger);
     }
 }

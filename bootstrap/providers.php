@@ -3,7 +3,7 @@
 return [
     App\Providers\AppServiceProvider::class,
     App\Providers\FortifyServiceProvider::class,
-    App\Providers\RepositoryServiceProvider::class,
+    App\Providers\ExchangerRepositoryServiceProvider::class,
     \App\Providers\HelperServiceProvider::class,
-    \App\Providers\InfluxDbServiceProvider::class,
+    \App\Providers\MonitoringServiceProvider::class,
 ];

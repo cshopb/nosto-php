@@ -13,20 +13,19 @@ use App\Dtos\CurrenciesExchangers\CurrencyExchangerApiConfigDto;
 use App\Dtos\CurrenciesExchangers\CurrencyRateDto;
 use App\Exceptions\ApiCallException;
 use App\Exceptions\CurrencyExchangerApiException;
-use App\Repositories\Apis\GuzzleApiRepository;
 use App\Repositories\Apis\Interfaces\ApiRepositoryInterface;
 use App\Repositories\CurrencyExchangers\SwopCxCurrencyExchanger;
 use Closure;
 use DateTimeImmutable;
-use Faker\Factory as Faker;
-use Faker\Generator;
+use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\MockObject\MockObject;
 use Tests\TestCase;
 
 class SwopCxCurrencyExchangerTest extends TestCase
 {
-    private Generator|MockObject $faker;
+    use WithFaker;
+
     private ApiRepositoryInterface|MockObject $api;
     private CurrencyExchangerApiConfigDto $config;
 
@@ -34,10 +33,7 @@ class SwopCxCurrencyExchangerTest extends TestCase
     {
         parent::setUp();
 
-        $this->faker = Faker::create();
-
-        $this->api = $this->getMockBuilder(GuzzleApiRepository::class)
-            ->disableOriginalConstructor()
+        $this->api = $this->getMockBuilder(ApiRepositoryInterface::class)
             ->getMock();
 
         $this->config = $this->fakeConfig();
@@ -402,7 +398,7 @@ class SwopCxCurrencyExchangerTest extends TestCase
         );
 
         $this->expectException(CurrencyExchangerApiException::class);
-        $this->expectExceptionMessage("Error grabbing single rate for {$baseCurrency->code} from swop-cx");
+        $this->expectExceptionMessage("Error grabbing single rate for $baseCurrency->code from swop-cx");
 
         // When
         $exchanger->getRateForCurrencies(
@@ -449,7 +445,7 @@ class SwopCxCurrencyExchangerTest extends TestCase
 
         $this->expectException(CurrencyExchangerApiException::class);
         $this->expectExceptionMessage(
-            "Please upgrade the account for SWOP-CX provider to get the rate for {$baseCurrency->code}",
+            "Please upgrade the account for SWOP-CX provider to get the rate for $baseCurrency->code",
         );
 
         // When

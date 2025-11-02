@@ -4,21 +4,19 @@ namespace App\Repositories\Apis;
 
 use App\Dtos\Apis\ApiRequestOptionsDto;
 use App\Dtos\Apis\ApiResponseDto;
+use App\Dtos\Monitoring\MonitoringApiCallDto;
 use App\Exceptions\ApiCallException;
 use App\Repositories\Apis\Interfaces\ApiRepositoryInterface;
-use DateTimeImmutable;
+use App\Repositories\Monitoring\Interface\MonitoringRepositoryInterface;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Exception\GuzzleException;
-use InfluxDB2\Client as InfluxDbClient;
-use InfluxDB2\Point;
-use InfluxDB2\WriteType;
 
 readonly class GuzzleApiRepository implements ApiRepositoryInterface
 {
     public function __construct(
         private GuzzleClient $guzzleClient,
-        private InfluxDbClient $influxDbClient,
+        private MonitoringRepositoryInterface $monitoring,
     )
     {
     }
@@ -31,22 +29,14 @@ readonly class GuzzleApiRepository implements ApiRepositoryInterface
         ApiRequestOptionsDto $options = new ApiRequestOptionsDto(),
     ): ApiResponseDto
     {
-        $point = new Point('api_call')
-            ->addTag(
-                'client',
-                'guzzle',
-            )
-            ->addField(
-                'url',
-                $url,
-            )
-            ->addField(
-                'options',
-                $options->toJson(),
-            )
-            ->time(new DateTimeImmutable());
+        $monitoringData = new MonitoringApiCallDto(
+            client: $this::class,
+            url: $url,
+            options: $options,
+        );
 
-        $this->writeToInfluxDb($point);
+        $this->monitoring
+            ->recordApiCall($monitoringData);
 
         try {
             $result = $this->guzzleClient
@@ -71,18 +61,5 @@ readonly class GuzzleApiRepository implements ApiRepositoryInterface
         }
 
         return ApiResponseDto::from($result);
-    }
-
-    private function writeToInfluxDb(Point $point): void
-    {
-        $writeInfluxDb = $this->influxDbClient
-            ->createWriteApi(
-                [
-                    'writeType' => WriteType::SYNCHRONOUS,
-                ],
-            );
-
-        $writeInfluxDb->write($point);
-        $writeInfluxDb->close();
     }
 }

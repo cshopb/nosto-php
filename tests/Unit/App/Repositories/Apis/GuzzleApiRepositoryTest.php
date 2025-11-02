@@ -1,18 +1,19 @@
 <?php
 
-namespace Tests\Unit\App\Repositories;
+namespace Tests\Unit\App\Repositories\Apis;
 
+use App\Dtos\Apis\ApiRequestOptionsDto;
 use App\Dtos\Apis\ApiResponseDto;
 use App\Dtos\Apis\ApiResponseHeadersDto;
 use App\Dtos\Apis\Enums\ApiResponseConnectionEnum;
 use App\Dtos\Apis\Enums\ApiResponseContentTypeEnum;
 use App\Dtos\Apis\Enums\ApiResponseStatusCodeEnum;
+use App\Dtos\Monitoring\MonitoringApiCallDto;
 use App\Exceptions\ApiCallException;
 use App\Helpers\JsonHelper;
 use App\Repositories\Apis\GuzzleApiRepository;
+use App\Repositories\Monitoring\Interface\MonitoringRepositoryInterface;
 use DateTimeImmutable;
-use Faker\Factory as Faker;
-use Faker\Generator;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Exception\RequestException;
@@ -20,37 +21,24 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
-use InfluxDB2\Client as InfluxDbClient;
-use InfluxDB2\WriteApi;
+use Illuminate\Foundation\Testing\WithFaker;
 use JsonException;
 use Tests\TestCase;
 
 class GuzzleApiRepositoryTest extends TestCase
 {
-    private Generator $faker;
+    use WithFaker;
+
     private JsonHelper $jsonHelper;
-    private InfluxDbClient $influxDbClient;
+    private MonitoringRepositoryInterface $monitoring;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->faker = Faker::create();
         $this->jsonHelper = new JsonHelper();
-
-        $influxDbWriter = $this->createMock(WriteApi::class);
-        $influxDbWriter->expects($this->once())
-            ->method('write');
-
-        $influxDbWriter->expects($this->once())
-            ->method('close');
-
-        $influxDbClient = $this->createMock(InfluxDbClient::class);
-        $influxDbClient->expects($this->once())
-            ->method('createWriteApi')
-            ->willReturn($influxDbWriter);
-
-        $this->influxDbClient = $influxDbClient;
+        $this->monitoring = $this->getMockBuilder(MonitoringRepositoryInterface::class)
+            ->getMock();
     }
 
     /**
@@ -82,7 +70,7 @@ class GuzzleApiRepositoryTest extends TestCase
 
         $repository = new GuzzleApiRepository(
             $guzzleClient,
-            $this->influxDbClient,
+            $this->monitoring,
         );
 
         // When
@@ -120,7 +108,7 @@ class GuzzleApiRepositoryTest extends TestCase
 
         $repository = new GuzzleApiRepository(
             $guzzleClient,
-            $this->influxDbClient,
+            $this->monitoring,
         );
 
         $this->expectException(ApiCallException::class);
@@ -177,7 +165,7 @@ class GuzzleApiRepositoryTest extends TestCase
 
         $repository = new GuzzleApiRepository(
             $guzzleClient,
-            $this->influxDbClient,
+            $this->monitoring,
         );
 
         $this->expectException(ApiCallException::class);
@@ -205,5 +193,47 @@ class GuzzleApiRepositoryTest extends TestCase
 
             throw $exception;
         }
+    }
+
+    /**
+     * @return void
+     * @throws ApiCallException
+     */
+    public function testGetFunctionWillCallTheMonitoringRepositoryWithCorrectData(): void
+    {
+        // Given
+        $guzzleResponseMock = new MockHandler(
+            [
+                new Response(
+                    ApiResponseStatusCodeEnum::HTTP_OK->value,
+                    [],
+                    '',
+                ),
+            ],
+        );
+
+        $handlerStack = HandlerStack::create($guzzleResponseMock);
+        $guzzleClient = new GuzzleClient(['handler' => $handlerStack]);
+
+        $expectedMonitoringData = new MonitoringApiCallDto(
+            client: GuzzleApiRepository::class,
+            url: $this->faker->url(),
+            options: new ApiRequestOptionsDto(),
+        );
+
+        $monitoring = $this->getMockBuilder(MonitoringRepositoryInterface::class)
+            ->getMock();
+
+        $monitoring->expects($this->once())
+            ->method('recordApiCall')
+            ->with($expectedMonitoringData);
+
+        $repository = new GuzzleApiRepository(
+            $guzzleClient,
+            $monitoring,
+        );
+
+        // When
+        $repository->get($expectedMonitoringData->url);
     }
 }

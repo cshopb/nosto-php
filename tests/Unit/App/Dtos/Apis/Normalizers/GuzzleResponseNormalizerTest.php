@@ -7,17 +7,25 @@ use App\Dtos\Apis\Enums\ApiResponseContentTypeEnum;
 use App\Dtos\Apis\Normalizers\GuzzleResponseNormalizer;
 use App\Exceptions\DtoNormalizerException;
 use App\Helpers\JsonHelper;
-use Faker\Factory as Faker;
-use Faker\Generator;
 use GuzzleHttp\Psr7\Response;
+use Illuminate\Foundation\Testing\WithFaker;
 use JsonException;
 use Tests\TestCase;
 
 class GuzzleResponseNormalizerTest extends TestCase
 {
+    use WithFaker;
+
     private GuzzleResponseNormalizer $normalizer;
     private JsonHelper $jsonHelper;
-    private Generator $faker;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->jsonHelper = new JsonHelper();
+        $this->normalizer = new GuzzleResponseNormalizer($this->jsonHelper);
+    }
 
     /**
      * @throws DtoNormalizerException
@@ -163,14 +171,5 @@ class GuzzleResponseNormalizerTest extends TestCase
 
         // When
         $result = $this->normalizer->normalize($response);
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->faker = Faker::create();
-        $this->jsonHelper = new JsonHelper();
-        $this->normalizer = new GuzzleResponseNormalizer($this->jsonHelper);
     }
 }
